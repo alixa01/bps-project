@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getLocale } from "@/lib/i18n/server";
+import { getTheme } from "@/lib/theme.server";
 
 const ui = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -34,10 +35,13 @@ export const viewport: Viewport = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const locale = await getLocale();
+  const [locale, theme] = await Promise.all([getLocale(), getTheme()]);
 
   return (
-    <html lang={locale} className={`${ui.variable} ${mono.variable}`}>
+    <html
+      lang={locale}
+      data-theme={theme ?? undefined}
+      className={`${ui.variable} ${mono.variable}`}>
       <body>
         <I18nProvider locale={locale}>{children}</I18nProvider>
       </body>

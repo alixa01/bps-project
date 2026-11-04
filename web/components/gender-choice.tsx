@@ -5,6 +5,10 @@ import type { LucideIcon } from "lucide-react";
 import { GENDERS } from "@/lib/schemas/visit";
 import { useT } from "@/lib/i18n/client";
 
+/**
+ * Warna hanya muncul setelah dipilih: laki-laki biru, perempuan pink.
+ * Saat diam atau di-hover, pil tetap abu-abu netral — warna berarti status.
+ */
 const STYLE: Record<
   (typeof GENDERS)[number],
   { icon: LucideIcon; checked: string }
@@ -12,12 +16,12 @@ const STYLE: Record<
   lk: {
     icon: Mars,
     checked:
-      "peer-checked:border-[#1d4ed8] peer-checked:bg-[#eff6ff] peer-checked:text-[#1d4ed8]",
+      "peer-checked:border-gender-male peer-checked:bg-gender-male/10 peer-checked:text-gender-male",
   },
   pr: {
     icon: Venus,
     checked:
-      "peer-checked:border-[#db2777] peer-checked:bg-[#fdf2f8] peer-checked:text-[#db2777]",
+      "peer-checked:border-gender-female peer-checked:bg-gender-female/10 peer-checked:text-gender-female",
   },
 };
 
@@ -29,6 +33,7 @@ export function GenderChoice({
   describedBy,
 }: {
   name?: string;
+  /** Kalau diisi, komponen jadi terkontrol. Kalau tidak, radio biasa. */
   value?: string;
   onChange?: (value: string) => void;
   invalid?: boolean;

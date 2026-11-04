@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { readSetting } from "@/lib/settings";
 import { SettingsForm } from "@/components/settings-form";
-import { LocaleToggle } from "@/components/locale-toggle";
+import { HeaderControls } from "@/components/header-controls";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export default async function SettingsPage() {
           <p className="masthead-unit">{t("org.unit")}</p>
         </div>
         <div className="flex items-center gap-xs">
-          <LocaleToggle />
+          <HeaderControls />
           <Link href="/dashboard" className="btn-quiet">
             {t("settings.backDashboard")}
           </Link>
@@ -38,7 +38,10 @@ export default async function SettingsPage() {
       <h1 className="text-heading-page text-ink">{t("settings.title")}</h1>
       <p className="mt-xs max-w-[52ch] text-body-md text-ink-muted">
         {t("settings.currentPrefix")}{" "}
-        <span className={isOpen ? "font-medium text-success" : "font-medium text-danger"}>
+        <span
+          className={
+            isOpen ? "font-medium text-success" : "font-medium text-danger"
+          }>
           {isOpen ? t("settings.currentOpen") : t("settings.currentClosed")}
         </span>
         . {t("settings.currentSuffix")}

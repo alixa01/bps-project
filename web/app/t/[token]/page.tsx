@@ -7,7 +7,7 @@ import { getLocale, getT } from "@/lib/i18n/server";
 import { formatDate, formatTime } from "@/lib/format";
 import type { DictKey } from "@/lib/i18n/dict";
 import { PrintButton } from "@/components/print-button";
-import { LocaleToggle } from "@/components/locale-toggle";
+import { HeaderControls } from "@/components/header-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,8 @@ const STATUS_STYLE: Record<string, string> = {
   batal: "border-danger text-danger",
 };
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function TicketPage({
   params,
@@ -53,9 +54,9 @@ export default async function TicketPage({
 
   return (
     <main className="mx-auto w-full max-w-ticket px-md py-lg">
-      <div className="mb-sm flex items-center justify-between gap-sm">
+      <div className="mb-sm flex flex-wrap items-center justify-between gap-sm">
         <p className="text-body-sm text-ink-muted">{t("ticket.title")}</p>
-        <LocaleToggle />
+        <HeaderControls />
       </div>
 
       <div className="ticket">
@@ -63,13 +64,14 @@ export default async function TicketPage({
           <p className="text-caption font-semibold text-primary">
             {t("org.name")} {t("org.unit")}
           </p>
-          <p className="mt-md text-caption text-ink-muted">{t("ticket.queue")}</p>
+          <p className="mt-md text-caption text-ink-muted">
+            {t("ticket.queue")}
+          </p>
           <p className="queue-number mt-2xs">{formatQueue(visit.queueSeq)}</p>
           <span
             className={`stamp mt-sm ${
               STATUS_STYLE[visit.status] ?? STATUS_STYLE.menunggu
-            }`}
-          >
+            }`}>
             {t(`status.${visit.status}` as DictKey)}
           </span>
         </div>
@@ -84,19 +86,27 @@ export default async function TicketPage({
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-sm">
-            <dt className="text-caption text-ink-muted">{t("ticket.institution")}</dt>
-            <dd className="text-right text-body-sm text-ink">{visit.institution}</dd>
+            <dt className="text-caption text-ink-muted">
+              {t("ticket.institution")}
+            </dt>
+            <dd className="text-right text-body-sm text-ink">
+              {visit.institution}
+            </dd>
           </div>
           {visit.gender ? (
             <div className="flex items-baseline justify-between gap-sm">
-              <dt className="text-caption text-ink-muted">{t("ticket.gender")}</dt>
+              <dt className="text-caption text-ink-muted">
+                {t("ticket.gender")}
+              </dt>
               <dd className="text-right text-body-sm text-ink">
                 {t(`gender.${visit.gender}` as DictKey)}
               </dd>
             </div>
           ) : null}
           <div className="flex items-baseline justify-between gap-sm">
-            <dt className="text-caption text-ink-muted">{t("ticket.checkIn")}</dt>
+            <dt className="text-caption text-ink-muted">
+              {t("ticket.checkIn")}
+            </dt>
             <dd className="text-right text-body-sm text-ink">
               {dateLabel}, {timeLabel}
             </dd>
@@ -109,16 +119,13 @@ export default async function TicketPage({
           className="btn-ghost w-full"
           href={`https://wa.me/?text=${waText}`}
           target="_blank"
-          rel="noreferrer"
-        >
+          rel="noreferrer">
           {t("ticket.saveWa")}
         </a>
         <PrintButton />
       </div>
 
-      <p className="mt-md text-caption text-ink-muted">
-        {t("ticket.note")}
-      </p>
+      <p className="mt-md text-caption text-ink-muted">{t("ticket.note")}</p>
     </main>
   );
 }

@@ -10,7 +10,7 @@ import { ClosedBanner } from "@/components/closed-banner";
 import { ensureAutoReopen } from "@/lib/settings";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/format";
-import { LocaleToggle } from "@/components/locale-toggle";
+import { HeaderControls } from "@/components/header-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-xs">
-          <LocaleToggle />
+          <HeaderControls />
           <Link href="/pengaturan" className="btn-quiet">
             {t("common.settings")}
           </Link>
@@ -80,7 +80,9 @@ export default async function DashboardPage() {
 
       <div className="mb-md">
         <div className="flex items-center justify-between gap-sm">
-          <h1 className="text-heading-card text-ink sm:text-heading-page">{t("dash.title")}</h1>
+          <h1 className="text-heading-card text-ink sm:text-heading-page">
+            {t("dash.title")}
+          </h1>
           <WalkInDialog />
         </div>
         <p className="mt-2xs text-caption text-ink-muted sm:text-body-sm">

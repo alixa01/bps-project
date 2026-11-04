@@ -16,8 +16,7 @@ export function LocaleToggle() {
     <div
       role="group"
       aria-label={t("common.language")}
-      className="inline-flex items-center overflow-hidden rounded-lg border border-border-strong"
-    >
+      className="inline-flex items-center overflow-hidden rounded-lg border border-border-strong">
       {LOCALES.map((locale) => {
         const active = locale === current;
         return (
@@ -32,10 +31,9 @@ export function LocaleToggle() {
             }
             className={`min-h-[44px] px-md text-caption font-medium transition-colors ${
               active
-                ? "bg-primary text-white"
+                ? "bg-primary-solid text-ink-inverse"
                 : "text-ink-muted hover:bg-surface-muted"
-            }`}
-          >
+            }`}>
             {SHORT[locale]}
           </button>
         );

@@ -26,6 +26,7 @@ const id = {
   "common.languageId": "Indonesia",
   "common.languageEn": "English",
   "common.loading": "Memuat",
+  "common.themeToggle": "Ganti tema terang atau gelap",
 
   "home.title": "Buku tamu",
   "home.lead":
@@ -165,7 +166,8 @@ const id = {
   "settings.backDashboard": "Kembali ke dashboard",
 
   "error.title": "Terjadi gangguan",
-  "error.body": "Halaman ini gagal dimuat. Coba muat ulang; kalau tetap gagal, hubungi petugas.",
+  "error.body":
+    "Halaman ini gagal dimuat. Coba muat ulang; kalau tetap gagal, hubungi petugas.",
   "error.retry": "Coba lagi",
   "notFound.title": "Halaman tidak ditemukan",
   "notFound.body": "Tautan yang Anda buka tidak ada atau sudah kedaluwarsa.",
@@ -247,6 +249,7 @@ const en: Dict = {
   "common.languageId": "Indonesia",
   "common.languageEn": "English",
   "common.loading": "Loading",
+  "common.themeToggle": "Switch light or dark theme",
 
   "home.title": "Guest book",
   "home.lead":
@@ -256,7 +259,8 @@ const en: Dict = {
   "home.sectionVisit": "Visit details",
   "home.privacy":
     "Your data is used only to record visits at BPS Tanah Datar Regency.",
-  "home.autofill": "Filled from your previous visit. Please check before submitting.",
+  "home.autofill":
+    "Filled from your previous visit. Please check before submitting.",
   "home.submit": "Submit and get a queue number",
   "home.submitting": "Submitting",
 
@@ -271,8 +275,7 @@ const en: Dict = {
   "field.detailOptional": "Notes (optional)",
   "field.detailHint": "For example, which data you need.",
   "field.choose": "Select",
-  "field.phoneHint":
-    "Used to contact you and to fill in your next visit.",
+  "field.phoneHint": "Used to contact you and to fill in your next visit.",
   "field.namePlaceholder": "Name as on your ID",
   "field.institutionPlaceholder": "Education Office, or Personal",
   "field.detailPlaceholder": "Short note",
@@ -383,7 +386,8 @@ const en: Dict = {
   "settings.backDashboard": "Back to dashboard",
 
   "error.title": "Something went wrong",
-  "error.body": "This page failed to load. Try again; if it keeps failing, contact the officer on duty.",
+  "error.body":
+    "This page failed to load. Try again; if it keeps failing, contact the officer on duty.",
   "error.retry": "Try again",
   "notFound.title": "Page not found",
   "notFound.body": "The link you opened does not exist or has expired.",
@@ -454,7 +458,8 @@ export function translate(
   key: DictKey,
   vars?: Record<string, string>,
 ): string {
-  const value = dictionaries[locale][key] ?? dictionaries[DEFAULT_LOCALE][key] ?? key;
+  const value =
+    dictionaries[locale][key] ?? dictionaries[DEFAULT_LOCALE][key] ?? key;
   if (!vars) return value;
   return value.replace(/\{(\w+)\}/g, (match, name: string) =>
     Object.prototype.hasOwnProperty.call(vars, name) ? vars[name] : match,
