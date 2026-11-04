@@ -1,0 +1,284 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Dasar
+   ============================================================ */
+@layer base {
+  :root {
+    --canvas: #eef1f4;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-neutral-body text-ink antialiased;
+    font-feature-settings: "ss01" 1;
+  }
+
+  /* Kerangka muat untuk loading.tsx di tiap rute */
+  .skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #eef1f5 25%, #e2e7ee 37%, #eef1f5 63%);
+    background-size: 400% 100%;
+    animation: skeleton-sweep 1.2s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-sweep {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton { animation: none; }
+  }
+
+  /* Fokus harus kelihatan — bukan dihapus demi estetika. */
+  :focus-visible {
+    outline: 2px solid theme("colors.primary");
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: theme("colors.primary");
+    color: #fff;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+/* ============================================================
+   Komponen — bahasa visual: formulir kantor & tiket antrian
+   ============================================================ */
+@layer components {
+  /* Kop surat: nama lembaga + garis tipis, tanpa label huruf besar. */
+  .masthead {
+    @apply border-b border-border pb-sm;
+  }
+
+  .masthead-org {
+    @apply text-body-md font-semibold text-primary;
+  }
+
+  .masthead-unit {
+    @apply text-body-sm text-ink-muted;
+  }
+
+  /* Lembar formulir: putih, garis tipis, sudut hampir siku. */
+  .sheet {
+    @apply rounded-lg border border-border bg-surface px-md py-lg sm:px-xl sm:py-xl;
+  }
+
+  /* Garis atas tebal: penanda lembar, sama dengan papan meja petugas. */
+  .sheet-accent {
+    border-top: 3px solid theme("colors.primary");
+  }
+
+  .sheet-title {
+    @apply text-heading-card text-ink;
+  }
+
+  .sheet-note {
+    @apply text-body-sm text-ink-muted;
+  }
+
+  /* Papan meja petugas: satu lembar dengan garis atas tebal —
+     dibaca seperti papan pengumuman, bukan kartu statistik. */
+  .callboard {
+    @apply rounded-lg border border-border bg-surface px-sm py-sm sm:px-md sm:py-md;
+    border-top: 3px solid theme("colors.primary");
+  }
+
+  .field-label {
+    @apply mb-2xs block text-label-sm text-ink;
+  }
+
+  .field-hint {
+    @apply mt-2xs text-caption text-ink-muted;
+  }
+
+  .field-error {
+    @apply mt-2xs text-caption text-danger;
+  }
+
+  /* Kolom formulir: 48px, bukan 40px — tamu mengisi sambil berdiri. */
+  .field {
+    @apply block min-h-[48px] w-full rounded-lg border border-border-strong bg-surface
+           px-md py-sm text-body-md text-ink placeholder:text-ink-muted/60
+           focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20;
+  }
+
+  /* Baris formulir: label di kiri saat layar lebar, label di atas saat HP. */
+  .form-row {
+    @apply grid gap-x-lg gap-y-2xs lg:grid-cols-12 lg:items-start;
+  }
+
+  /* Baru di 1024px ke atas label muat sebaris dengan input. Di bawah itu
+     label di atas — supaya tanda bintang tidak pernah jatuh sendiri. */
+  .form-label {
+    @apply text-body-sm font-medium text-ink lg:col-span-3 lg:pt-[15px];
+  }
+
+  .form-control {
+    @apply lg:col-span-9;
+  }
+
+  .section-head {
+    @apply flex items-center gap-sm border-b border-border pb-xs;
+  }
+
+  .section-num {
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full border
+           border-primary/30 font-mono text-caption text-primary;
+  }
+
+  .field[aria-invalid="true"] {
+    @apply border-danger focus:border-danger focus:ring-danger/20;
+  }
+
+  .btn {
+    @apply inline-flex min-h-tap items-center justify-center rounded-lg px-md
+           text-button transition-colors duration-150 disabled:cursor-not-allowed
+           disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-ink-inverse hover:bg-primary-dark;
+  }
+
+  .btn-ghost {
+    @apply btn border border-border-strong bg-surface text-ink hover:bg-surface-muted;
+  }
+
+  .btn-quiet {
+    @apply inline-flex min-h-tap items-center px-xs text-label-sm text-primary
+           underline decoration-border underline-offset-4 hover:decoration-primary;
+  }
+
+  /* Aksi pendamping di dalam baris tamu: lebih ringkas dari tombol,
+     tetap setinggi 40px supaya jari tidak salah tekan. */
+  .row-link {
+    @apply inline-flex min-h-[40px] items-center px-2xs text-caption text-primary
+           underline decoration-border underline-offset-4 hover:decoration-primary;
+  }
+
+  /* Cap/stempel status: garis, bukan pil berwarna penuh. */
+  .stamp {
+    @apply inline-flex items-center rounded-xs border px-xs py-[3px]
+           text-caption font-medium;
+  }
+
+  /* Buku tamu: baris ledger dengan garis rambut, bukan kartu bertumpuk. */
+  .ledger {
+    @apply border-y border-border;
+  }
+
+  .ledger-row {
+    @apply border-b border-border last:border-b-0;
+  }
+
+  /* Tiket antrian kertas: perforasi + lekuk di kedua sisi. */
+  .ticket {
+    @apply relative rounded-lg border border-border bg-surface shadow-paper;
+  }
+
+  /* Garis sobek: bukan hiasan — di sinilah tiket "dipisah" dari formulir. */
+  .ticket-perf {
+    @apply relative border-t border-dashed border-border-strong;
+  }
+
+  .ticket-perf::before,
+  .ticket-perf::after {
+    content: "";
+    position: absolute;
+    top: -10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: var(--canvas);
+    border: 1px solid theme("colors.border");
+  }
+
+  .ticket-perf::before {
+    left: -10px;
+    border-right-color: transparent;
+  }
+
+  .ticket-perf::after {
+    right: -10px;
+    border-left-color: transparent;
+  }
+
+  /* Nomor antrian: angka besar, monospace, angka tidak "menari". */
+  .queue-number {
+    @apply font-mono text-[76px] font-semibold leading-none tracking-tight
+           text-primary tabular-nums;
+  }
+
+  .meta-strip {
+    @apply flex flex-wrap items-center gap-x-md gap-y-2xs border-y border-border
+           py-xs text-caption text-ink-muted;
+  }
+
+
+  /* Pil jenis kelamin: hover hanya menggelap sedikit, warna biru/pink
+     khusus status terpilih. */
+  .gender-pill {
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+
+  label:not(:has(input:checked)):hover .gender-pill {
+    border-color: #93a1b3;
+    background-color: #f2f4f7;
+    color: var(--ink, #121a26);
+  }
+
+  /* Satu-satunya animasi masuk: baris tamu baru. */
+  .row-in {
+    animation: row-in 320ms ease-out;
+  }
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ============================================================
+   Cetak tiket
+   ============================================================ */
+@media print {
+  @page {
+    size: A6 portrait;
+    margin: 8mm;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .ticket {
+    border: 1px solid #999;
+    box-shadow: none;
+  }
+}
