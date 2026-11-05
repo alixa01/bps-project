@@ -54,6 +54,7 @@ export default async function SettingsPage() {
           reopenAt={setting?.reopenAt ? setting.reopenAt.toISOString() : null}
           autoReopen={setting?.autoReopen ?? true}
           autoReply={setting?.autoReply ?? null}
+          autoReplyEn={setting?.autoReplyEn ?? null}
         />
       </div>
     </main>
