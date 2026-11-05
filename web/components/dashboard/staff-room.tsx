@@ -15,6 +15,7 @@ import {
   MessageBubble,
   type UiMessage,
 } from "@/components/chat/message-bubble";
+import { VisitFromChat } from "@/components/dashboard/visit-from-chat";
 
 const POLL_MS = 3_000;
 const LENGKET_PX = 80;
@@ -301,35 +302,45 @@ export function StaffRoom({
             </div>
           </div>
 
-          {terbuka ? (
-            tanyaTutup ? (
-              <div className="flex flex-wrap items-center gap-xs">
-                <span className="text-caption text-ink-muted">
-                  {t("inbox.closeAsk")}
-                </span>
+          <div className="flex flex-wrap items-center gap-xs">
+            {terbuka && !queueNo ? (
+              <VisitFromChat
+                conversationId={conversationId}
+                guestName={guestName}
+                guestPhone={guestPhone}
+              />
+            ) : null}
+
+            {terbuka ? (
+              tanyaTutup ? (
+                <div className="flex flex-wrap items-center gap-xs">
+                  <span className="text-caption text-ink-muted">
+                    {t("inbox.closeAsk")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void tutup()}
+                    disabled={menutup}
+                    className="btn-ghost text-danger">
+                    {menutup ? t("common.saving") : t("inbox.closeYes")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTanyaTutup(false)}
+                    className="btn-quiet">
+                    {t("inbox.closeNo")}
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => void tutup()}
-                  disabled={menutup}
-                  className="btn-ghost text-danger">
-                  {menutup ? t("common.saving") : t("inbox.closeYes")}
+                  onClick={() => setTanyaTutup(true)}
+                  className="btn-quiet shrink-0">
+                  {t("inbox.close")}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setTanyaTutup(false)}
-                  className="btn-quiet">
-                  {t("inbox.closeNo")}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setTanyaTutup(true)}
-                className="btn-quiet shrink-0">
-                {t("inbox.close")}
-              </button>
-            )
-          ) : null}
+              )
+            ) : null}
+          </div>
         </div>
       </header>
 

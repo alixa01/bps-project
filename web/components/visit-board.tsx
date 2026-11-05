@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { setVisitStatus } from "@/lib/actions/staff";
@@ -25,6 +26,8 @@ export type BoardVisit = {
   phone: string;
   checkInAt: string;
   source: string;
+  /** Diisi kalau kunjungan ini punya percakapan dengan pesan tamu belum dibaca. */
+  chatConversationId?: string | null;
 };
 
 const FINAL: VisitStatus[] = ["selesai", "batal"];
@@ -281,6 +284,7 @@ export function VisitBoard({ initialVisits }: { initialVisits: BoardVisit[] }) {
             </p>
           </div>
 
+          {/* Garis sobek: aksen tiket yang sama dengan halaman tamu. */}
           <div className="flex flex-1 flex-wrap items-start justify-between gap-md border-t border-dashed border-border-strong pt-sm sm:border-l sm:border-t-0 sm:pl-md sm:pt-0">
             <div className="min-w-0">
               {current ? (
@@ -404,6 +408,7 @@ export function VisitBoard({ initialVisits }: { initialVisits: BoardVisit[] }) {
               const primary = actions.find(
                 (a) => a !== "batal" && a !== "menunggu",
               );
+              // "Batalkan" selalu di slot paling kanan supaya sejajar antar baris.
               const secondary = actions
                 .filter((a) => a !== primary)
                 .sort(
@@ -456,6 +461,14 @@ export function VisitBoard({ initialVisits }: { initialVisits: BoardVisit[] }) {
                       <p className="mt-2xs text-body-sm text-ink-muted">
                         {meta(visit)}
                       </p>
+
+                      {visit.chatConversationId ? (
+                        <Link
+                          href={`/dashboard/pesan/${visit.chatConversationId}`}
+                          className="mt-xs inline-flex min-h-[32px] items-center gap-2xs text-caption text-primary underline decoration-border underline-offset-4 hover:decoration-primary">
+                          {t("dash.chatUnread")}
+                        </Link>
+                      ) : null}
 
                       {visit.detail ? (
                         <p className="mt-xs line-clamp-2 max-w-[60ch] text-caption text-ink">
@@ -566,7 +579,8 @@ export function VisitBoard({ initialVisits }: { initialVisits: BoardVisit[] }) {
 }
 
 /**
-Pagination
+ * Penomoran halaman untuk daftar tamu: 5 baris per halaman.
+ * Tidak muncul kalau daftarnya memang muat satu halaman.
  */
 function Pager({
   page,

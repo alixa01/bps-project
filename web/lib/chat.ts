@@ -1,7 +1,9 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { AUTO_REPLY_BAWAAN, perluSapa } from "@/lib/chat-janitor";
 import { isValidPhone, normalizePhone } from "@/lib/phone";
+import { serviceState } from "@/lib/service-hours";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { periksaPesan } from "@/lib/chat-pesan";
 import type {
@@ -71,8 +73,16 @@ export async function bukaPercakapanInti(
   try {
     const created = await prisma.conversation.create({
       data: { guestName: name, guestPhone: phone },
-      select: { token: true },
+      select: { id: true, token: true },
     });
+    // Tamu yang sudah check-in lebih dulu: tempelkan langsung ke kunjungannya.
+    await tautkanKunjunganTerakhir(created.id, phone).catch((error) =>
+      console.error("tautkan kunjungan gagal", error),
+    );
+    // Di luar jam layanan, tamu langsung tahu kapan pesannya akan dibaca.
+    await sapaLuarJam(created.id).catch((error) =>
+      console.error("sapa luar jam gagal", error),
+    );
     return { ok: true, token: created.token, created: true };
   } catch (error) {
     // Dua permintaan bersamaan: yang kalah balapan menemukan baris pemenang
@@ -191,6 +201,11 @@ export async function kirimPesanTamuInti(
       });
       return created;
     });
+    // Percakapan yang dibuat pada jam kerja lalu ditulis malam tetap disapa,
+    // sekali saja.
+    await sapaLuarJam(conv.id).catch((error) =>
+      console.error("sapa luar jam gagal", error),
+    );
     return { ok: true, message: kePesan(row) };
   } catch (error) {
     console.error("kirim pesan gagal", error);
@@ -366,6 +381,225 @@ export async function hitungBelumDibaca(): Promise<number> {
       and (c.staff_last_read_at is null or m.created_at > c.staff_last_read_at)
   `;
   return Number(rows[0]?.n ?? 0);
+}
+
+/* ============================================================
+   Jam layanan
+   ============================================================ */
+
+/** Teks sambutan: isian petugas di pengaturan, atau teks bawaan. */
+export async function teksSambutan(): Promise<string> {
+  const setting = await prisma.setting.findUnique({
+    where: { id: 1 },
+    select: { autoReply: true },
+  });
+  const teks = setting?.autoReply?.trim();
+  return teks && teks.length > 0 ? teks : AUTO_REPLY_BAWAAN;
+}
+
+/**
+ * Sapa sekali saat tamu menulis di luar jam layanan.
+ *
+ * Klaim "sudah disapa" dilakukan lewat update bersyarat, bukan baca-lalu-tulis:
+ * dua pesan yang masuk berbarengan tetap hanya menghasilkan satu sambutan.
+ */
+export async function sapaLuarJam(
+  conversationId: string,
+  now = new Date(),
+): Promise<boolean> {
+  if (serviceState(now).status === "open") {
+    // Jam kerja menurut jadwal; tetap disapa kalau petugas menutup kantor.
+    const setting = await prisma.setting.findUnique({
+      where: { id: 1 },
+      select: { isOpen: true },
+    });
+    if (setting?.isOpen ?? true) return false;
+  }
+
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { status: true, autoRepliedAt: true },
+  });
+  if (!conv) return false;
+  if (
+    !perluSapa(
+      { status: conv.status, autoRepliedAt: conv.autoRepliedAt },
+      false,
+    )
+  ) {
+    return false;
+  }
+
+  const klaim = await prisma.conversation.updateMany({
+    where: { id: conversationId, status: "terbuka", autoRepliedAt: null },
+    data: { autoRepliedAt: now },
+  });
+  if (klaim.count === 0) return false;
+
+  await prisma.message.create({
+    data: { conversationId, sender: "sistem", body: await teksSambutan() },
+  });
+  return true;
+}
+
+/* ============================================================
+   Sambungan ke kunjungan
+   ============================================================ */
+
+/** Teks pesan sistem saat kunjungan tersambung. Satu sumber, dipakai dua sisi. */
+export function teksKunjungan(queueNo: string): string {
+  return `Kunjungan tercatat. Nomor antrian ${queueNo}.`;
+}
+
+async function kirimSistem(
+  conversationId: string,
+  body: string,
+): Promise<void> {
+  const now = new Date();
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: {
+      lastMessageAt: now,
+      messages: { create: { sender: "sistem", body } },
+    },
+  });
+}
+
+/**
+ * Dipanggil setelah check-in berhasil. Percakapan terbuka dengan nomor yang
+ * sama disambungkan ke kunjungan baru, lalu tamu menerima nomor antriannya
+ * di ruang chat — satu percakapan, bukan dua.
+ *
+ * Kegagalan di sini tidak boleh menggagalkan check-in: tamu sudah tercatat,
+ * tautan chat hanya pelengkap.
+ */
+export async function sambungKunjunganInti(input: {
+  visitId: string;
+  phone: string;
+  queueNo: string;
+}): Promise<void> {
+  const conv = await prisma.conversation.findFirst({
+    where: { guestPhone: input.phone, status: "terbuka", visitId: null },
+    select: { id: true },
+  });
+  if (!conv) return;
+
+  await prisma.conversation.update({
+    where: { id: conv.id },
+    data: { visitId: input.visitId },
+  });
+  await kirimSistem(conv.id, teksKunjungan(input.queueNo));
+}
+
+/**
+ * Kebalikannya: tamu check-in dulu, baru membuka chat. Percakapan yang baru
+ * dibuat ditempelkan ke kunjungan terakhir dengan nomor sama (maksimal 12 jam
+ * ke belakang) supaya petugas tidak melihat dua baris untuk satu orang.
+ */
+export async function tautkanKunjunganTerakhir(
+  conversationId: string,
+  phone: string,
+): Promise<void> {
+  const batas = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  const visit = await prisma.visit.findFirst({
+    where: {
+      phone,
+      checkInAt: { gte: batas },
+      conversation: { is: null },
+    },
+    orderBy: { checkInAt: "desc" },
+    select: { id: true },
+  });
+  if (!visit) return;
+
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { visitId: visit.id },
+  });
+}
+
+export type JadikanHasil =
+  | { ok: true; queueNo: string }
+  | { ok: false; error: "notFound" | "sudahTerkait" | "failed" };
+
+/**
+ * "Jadikan kunjungan" dari inbox: tamu datang tanpa mengisi form, petugas
+ * menaikkannya jadi baris kunjungan resmi tanpa mengetik ulang nama dan nomor.
+ * Nomor antrian tetap terbit dari fungsi `create_visit` yang sama.
+ */
+export async function jadikanKunjunganInti(
+  conversationId: string,
+  data: {
+    institution: string;
+    institutionCat: string;
+    purpose: string;
+    gender: string;
+  },
+): Promise<JadikanHasil> {
+  if (!UUID_RE.test(conversationId)) return { ok: false, error: "notFound" };
+
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { id: true, guestName: true, guestPhone: true, visitId: true },
+  });
+  if (!conv) return { ok: false, error: "notFound" };
+  if (conv.visitId) return { ok: false, error: "sudahTerkait" };
+
+  try {
+    const rows = await prisma.$queryRaw<
+      Array<{ id: string; queue_no: string }>
+    >`
+      SELECT * FROM create_visit(
+        ${conv.guestName}::text,
+        ${data.institution}::text,
+        ${data.institutionCat}::text,
+        ${conv.guestPhone}::text,
+        ${data.purpose}::text,
+        ${null}::text,
+        ${1}::int,
+        ${"manual"}::visit_source,
+        ${data.gender}::visit_gender
+      )`;
+    const visit = rows[0];
+    await prisma.conversation.update({
+      where: { id: conv.id },
+      data: { visitId: visit.id },
+    });
+    await kirimSistem(conv.id, teksKunjungan(visit.queue_no));
+    return { ok: true, queueNo: visit.queue_no };
+  } catch (error) {
+    console.error("jadikan kunjungan gagal", error);
+    return { ok: false, error: "failed" };
+  }
+}
+
+/**
+ * Untuk papan antrian: kunjungan mana yang punya pesan tamu belum dibaca.
+ * Hasilnya peta `visitId -> conversationId` supaya barisnya bisa ditautkan
+ * langsung ke percakapan yang dimaksud.
+ */
+export async function belumDibacaPerKunjungan(
+  visitIds: string[],
+): Promise<Map<string, string>> {
+  const ids = visitIds.filter((id) => UUID_RE.test(id));
+  if (ids.length === 0) return new Map();
+
+  const rows = await prisma.$queryRaw<
+    Array<{ visit_id: string; conversation_id: string }>
+  >`
+    select c.visit_id, c.id as conversation_id
+    from conversations c
+    where c.status = 'terbuka'
+      and c.visit_id = any(${ids}::uuid[])
+      and exists (
+        select 1 from messages m
+        where m.conversation_id = c.id
+          and m.sender = 'tamu'
+          and (c.staff_last_read_at is null or m.created_at > c.staff_last_read_at)
+      )
+  `;
+
+  return new Map(rows.map((row) => [row.visit_id, row.conversation_id]));
 }
 
 export async function kirimPesanPetugasInti(

@@ -9,6 +9,7 @@ import {
   visitFormSchema,
 } from "@/lib/schemas/visit";
 import { serviceState } from "@/lib/service-hours";
+import { sambungKunjunganInti } from "@/lib/chat";
 
 export type FormState = {
   errors: Record<string, string>;
@@ -41,7 +42,7 @@ export async function createVisit(
     detail: raw.detail ?? "",
   };
 
-  // Honeypot
+  // Honeypot: field tersembunyi yang hanya diisi bot.
   if (raw.website) {
     return { errors: {}, message: "err.formInvalid", values: keepValues };
   }
@@ -55,6 +56,8 @@ export async function createVisit(
     };
   }
 
+  // Dua hal ini tidak saling bergantung: ambil bersamaan agar hemat satu
+  // putaran jaringan (terasa di koneksi lambat).
   const [ip, setting] = await Promise.all([
     clientIp(),
     prisma.setting.findUnique({ where: { id: 1 } }),
@@ -75,8 +78,12 @@ export async function createVisit(
   const data = parsed.data;
 
   let token: string;
+  let visitId: string;
+  let queueNo: string;
   try {
-    const rows = await prisma.$queryRaw<Array<{ token: string }>>`
+    const rows = await prisma.$queryRaw<
+      Array<{ token: string; id: string; queue_no: string }>
+    >`
       SELECT * FROM create_visit(
         ${data.name}::text,
         ${data.institution}::text,
@@ -89,6 +96,8 @@ export async function createVisit(
         ${data.gender}::visit_gender
       )`;
     token = rows[0].token;
+    visitId = rows[0].id;
+    queueNo = rows[0].queue_no;
   } catch (error) {
     console.error("create_visit gagal", error);
     return {
@@ -98,6 +107,17 @@ export async function createVisit(
     };
   }
 
+  // Percakapan terbuka dengan nomor yang sama ikut tersambung ke kunjungan
+  // ini supaya petugas melihat satu orang, bukan dua baris terpisah. Tamu
+  // juga menerima nomor antriannya di ruang chat.
+  await sambungKunjunganInti({
+    visitId,
+    phone: normalizePhone(data.phone),
+    queueNo,
+  }).catch((error: unknown) => console.error("sambung kunjungan gagal", error));
+
+  // Navigasi dilakukan di klien: redirect() setelah cookies().set() tidak
+  // selalu terbaca browser pada Next 15, tamu jadi tertahan di form.
   return { errors: {}, message: null, values: {}, ok: true, token };
 }
 

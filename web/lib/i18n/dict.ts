@@ -157,6 +157,10 @@ const id = {
   "settings.autoLabel": "Buka otomatis saat waktunya tiba",
   "settings.autoHint":
     "Kalau dimatikan, buku tamu tetap tertutup sampai dibuka manual.",
+  "settings.autoReply": "Sambutan di luar jam layanan",
+  "settings.autoReplyPlaceholder": "Kosongkan untuk memakai teks bawaan.",
+  "settings.autoReplyHint":
+    "Dikirim sekali per percakapan, hanya kalau tamu menulis di luar jam layanan atau saat kantor ditutup.",
   "settings.save": "Simpan pengaturan",
   "settings.saving": "Menyimpan",
   "settings.savedAt": "Pengaturan tersimpan pukul {time} WIB.",
@@ -258,6 +262,16 @@ const id = {
     "Percakapan ditutup. Tamu bisa memulai chat baru kapan saja.",
   "inbox.guestPhone": "WhatsApp tamu",
   "inbox.openedAt": "Dibuka {time}",
+  "inbox.makeVisit": "Jadikan kunjungan",
+  "inbox.visitTitle": "Jadikan kunjungan",
+  "inbox.visitLead":
+    "Nama dan WhatsApp tamu dipakai apa adanya. Lengkapi kolom yang tidak ditanyakan di halaman chat.",
+  "inbox.visitSubmit": "Terbitkan nomor antrian",
+  "inbox.visitSubmitting": "Menerbitkan",
+  "inbox.visitResult":
+    "Nomor antrian {no} terbit dan percakapan sudah tersambung.",
+  "err.visitAlready": "Percakapan ini sudah tersambung ke kunjungan.",
+  "dash.chatUnread": "Pesan baru",
 
   "err.nameRequired": "Nama wajib diisi.",
   "err.nameShort": "Nama minimal 3 karakter.",
@@ -437,6 +451,10 @@ const en: Dict = {
   "settings.autoLabel": "Reopen automatically when the time comes",
   "settings.autoHint":
     "If turned off, the guest book stays closed until reopened manually.",
+  "settings.autoReply": "After-hours greeting",
+  "settings.autoReplyPlaceholder": "Leave empty to use the built-in text.",
+  "settings.autoReplyHint":
+    "Sent once per conversation, only when a guest writes outside service hours or while the office is closed.",
   "settings.save": "Save settings",
   "settings.saving": "Saving",
   "settings.savedAt": "Settings saved at {time} (GMT+7).",
@@ -539,6 +557,16 @@ const en: Dict = {
     "Conversation closed. The guest can start a new chat anytime.",
   "inbox.guestPhone": "Guest WhatsApp",
   "inbox.openedAt": "Opened {time}",
+  "inbox.makeVisit": "Make a visit",
+  "inbox.visitTitle": "Make a visit",
+  "inbox.visitLead":
+    "The guest's name and WhatsApp number are used as they are. Fill in the columns the chat page never asked for.",
+  "inbox.visitSubmit": "Issue queue number",
+  "inbox.visitSubmitting": "Issuing",
+  "inbox.visitResult":
+    "Queue number {no} issued and the conversation is linked.",
+  "err.visitAlready": "This conversation is already linked to a visit.",
+  "dash.chatUnread": "New message",
 
   "err.nameRequired": "Name is required.",
   "err.nameShort": "Name must be at least 3 characters.",

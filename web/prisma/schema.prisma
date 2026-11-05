@@ -123,11 +123,18 @@ model Setting {
   closedReason String?   @map("closed_reason")
   reopenAt     DateTime? @map("reopen_at") @db.Timestamptz(6)
   autoReopen   Boolean   @default(true) @map("auto_reopen")
+  autoReply    String?   @map("auto_reply")
   updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@map("settings")
 }
 
+/// Percakapan chat. Tidak menempel ke kunjungan sejak awal; `visitId` diisi
+/// belakangan kalau tamu check-in dengan nomor yang sama.
+///
+/// Aturan "satu nomor hanya boleh punya satu percakapan terbuka" dijaga
+/// partial unique index di migrasi 0004 — Prisma tidak bisa memodelkannya,
+/// jadi jangan hapus index itu saat menyusun diff.
 model Conversation {
   id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   token          String             @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
