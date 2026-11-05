@@ -1,7 +1,8 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { AUTO_REPLY_BAWAAN, perluSapa } from "@/lib/chat-janitor";
+import { perluSapa } from "@/lib/chat-janitor";
+import { keLocale, pilihSambutan, teksKunjungan } from "@/lib/sambutan";
 import { isValidPhone, normalizePhone } from "@/lib/phone";
 import { serviceState } from "@/lib/service-hours";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -48,7 +49,7 @@ async function cariTerbuka(phone: string): Promise<{ token: string } | null> {
 }
 
 export async function bukaPercakapanInti(
-  input: { name: string; phone: string },
+  input: { name: string; phone: string; locale?: string },
   kuota?: KuotaCek,
 ): Promise<BukaHasil> {
   const phone = normalizePhone(input.phone);
@@ -72,7 +73,12 @@ export async function bukaPercakapanInti(
 
   try {
     const created = await prisma.conversation.create({
-      data: { guestName: name, guestPhone: phone },
+      data: {
+        guestName: name,
+        guestPhone: phone,
+        // Bahasa tamu saat mulai chat menentukan bahasa pesan sistem nanti.
+        locale: keLocale(input.locale),
+      },
       select: { id: true, token: true },
     });
     // Tamu yang sudah check-in lebih dulu: tempelkan langsung ke kunjungannya.
@@ -101,8 +107,11 @@ export async function bukaPercakapanInti(
    ============================================================ */
 
 export const PESAN_MAKS = 1000;
-/** Satu pesan per dua detik — menahan kirim ganda karena tombol tertekan dua kali. */
-const CEPAT_MS = 2_000;
+/**
+ * Rentang waktu untuk mengenali kiriman ganda: pesan tamu dengan teks sama
+ * persis dalam 10 detik terakhir dianggap kiriman yang sama, bukan pesan baru.
+ */
+const JENDELA_KEMBAR = 10_000;
 const JAM_MS = 60 * 60 * 1000;
 const JAM_LIMIT = 20;
 
@@ -114,7 +123,6 @@ export type KirimReason =
   | "closed"
   | "empty"
   | "long"
-  | "fast"
   | "hourly"
   | "failed";
 
@@ -153,6 +161,7 @@ export async function kirimPesanTamuInti(
   token: string,
   body: string,
   now = Date.now(),
+  locale?: string,
 ): Promise<KirimHasil> {
   const salah = periksaPesan(body);
   if (salah) return { ok: false, reason: salah };
@@ -160,7 +169,7 @@ export async function kirimPesanTamuInti(
 
   const conv = await prisma.conversation.findUnique({
     where: { token },
-    select: { id: true, status: true, guestPhone: true },
+    select: { id: true, status: true, guestPhone: true, locale: true },
   });
   if (!conv) return { ok: false, reason: "notFound" };
   if (conv.status !== "terbuka") return { ok: false, reason: "closed" };
@@ -179,25 +188,40 @@ export async function kirimPesanTamuInti(
     };
   }
 
-  const perDetik = checkRateLimit(`chat-cepat:${conv.id}`, 1, CEPAT_MS, now);
-  if (!perDetik.allowed) {
-    return {
-      ok: false,
-      reason: "fast",
-      retryAfterSeconds: perDetik.retryAfterSeconds,
-    };
-  }
+  // Kiriman ganda dari ketukan yang sama (tombol dua kali atau Enter beruntun)
+  // berisi teks identik dan tiba berdekatan. Dibandingkan berdasarkan isi
+  // pesan, bukan jeda waktu: dua permintaan yang sama bisa sampai ke server
+  // lebih dari satu detik terpisah, sedangkan dua pesan pendek yang berbeda
+  // ("assalamualaikum" lalu "mau tanya") tetap sah walaupun cepat.
+  const teks = body.trim();
+  const kembar = await prisma.message.findFirst({
+    where: {
+      conversationId: conv.id,
+      sender: "tamu",
+      body: teks,
+      createdAt: { gte: new Date(now - JENDELA_KEMBAR) },
+    },
+    select: PILIH_PESAN,
+  });
+  if (kembar) return { ok: true, message: kePesan(kembar) };
 
   try {
     const row = await prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
-        data: { conversationId: conv.id, sender: "tamu", body: body.trim() },
+        data: { conversationId: conv.id, sender: "tamu", body: teks },
         select: PILIH_PESAN,
       });
       // Daftar percakapan petugas diurutkan dari aktivitas terakhir.
       await tx.conversation.update({
         where: { id: conv.id },
-        data: { lastMessageAt: created.createdAt },
+        data: {
+          lastMessageAt: created.createdAt,
+          // Tamu bisa berganti bahasa di tengah jalan; pesan sistem berikutnya
+          // mengikuti pilihan terbaru, bukan pilihan saat percakapan dibuat.
+          ...(locale && keLocale(locale) !== conv.locale
+            ? { locale: keLocale(locale) }
+            : {}),
+        },
       });
       return created;
     });
@@ -387,14 +411,16 @@ export async function hitungBelumDibaca(): Promise<number> {
    Jam layanan
    ============================================================ */
 
-/** Teks sambutan: isian petugas di pengaturan, atau teks bawaan. */
-export async function teksSambutan(): Promise<string> {
+/** Teks sambutan: isian petugas untuk bahasa tamu, atau teks bawaan. */
+export async function teksSambutan(locale: string): Promise<string> {
   const setting = await prisma.setting.findUnique({
     where: { id: 1 },
-    select: { autoReply: true },
+    select: { autoReply: true, autoReplyEn: true },
   });
-  const teks = setting?.autoReply?.trim();
-  return teks && teks.length > 0 ? teks : AUTO_REPLY_BAWAAN;
+  return pilihSambutan(keLocale(locale), {
+    id: setting?.autoReply,
+    en: setting?.autoReplyEn,
+  });
 }
 
 /**
@@ -418,7 +444,7 @@ export async function sapaLuarJam(
 
   const conv = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    select: { status: true, autoRepliedAt: true },
+    select: { status: true, autoRepliedAt: true, locale: true },
   });
   if (!conv) return false;
   if (
@@ -437,7 +463,11 @@ export async function sapaLuarJam(
   if (klaim.count === 0) return false;
 
   await prisma.message.create({
-    data: { conversationId, sender: "sistem", body: await teksSambutan() },
+    data: {
+      conversationId,
+      sender: "sistem",
+      body: await teksSambutan(conv.locale),
+    },
   });
   return true;
 }
@@ -446,10 +476,7 @@ export async function sapaLuarJam(
    Sambungan ke kunjungan
    ============================================================ */
 
-/** Teks pesan sistem saat kunjungan tersambung. Satu sumber, dipakai dua sisi. */
-export function teksKunjungan(queueNo: string): string {
-  return `Kunjungan tercatat. Nomor antrian ${queueNo}.`;
-}
+export { teksKunjungan };
 
 async function kirimSistem(
   conversationId: string,
@@ -480,7 +507,7 @@ export async function sambungKunjunganInti(input: {
 }): Promise<void> {
   const conv = await prisma.conversation.findFirst({
     where: { guestPhone: input.phone, status: "terbuka", visitId: null },
-    select: { id: true },
+    select: { id: true, locale: true },
   });
   if (!conv) return;
 
@@ -488,7 +515,7 @@ export async function sambungKunjunganInti(input: {
     where: { id: conv.id },
     data: { visitId: input.visitId },
   });
-  await kirimSistem(conv.id, teksKunjungan(input.queueNo));
+  await kirimSistem(conv.id, teksKunjungan(input.queueNo, conv.locale));
 }
 
 /**
@@ -540,7 +567,13 @@ export async function jadikanKunjunganInti(
 
   const conv = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    select: { id: true, guestName: true, guestPhone: true, visitId: true },
+    select: {
+      id: true,
+      guestName: true,
+      guestPhone: true,
+      visitId: true,
+      locale: true,
+    },
   });
   if (!conv) return { ok: false, error: "notFound" };
   if (conv.visitId) return { ok: false, error: "sudahTerkait" };
@@ -565,7 +598,7 @@ export async function jadikanKunjunganInti(
       where: { id: conv.id },
       data: { visitId: visit.id },
     });
-    await kirimSistem(conv.id, teksKunjungan(visit.queue_no));
+    await kirimSistem(conv.id, teksKunjungan(visit.queue_no, conv.locale));
     return { ok: true, queueNo: visit.queue_no };
   } catch (error) {
     console.error("jadikan kunjungan gagal", error);

@@ -43,7 +43,11 @@ export function GenderChoice({
   const controlled = value !== undefined;
 
   return (
-    <div className="flex flex-wrap gap-sm">
+    <div
+      className="flex flex-wrap gap-sm"
+      role="radiogroup"
+      aria-invalid={invalid}
+      aria-describedby={describedBy}>
       {GENDERS.map((gender) => {
         const { icon: Icon, checked } = STYLE[gender];
         return (
@@ -59,8 +63,6 @@ export function GenderChoice({
                     onChange: () => onChange?.(gender),
                   }
                 : {})}
-              aria-invalid={invalid}
-              aria-describedby={describedBy}
             />
             <span
               className={`gender-pill flex min-h-[48px] items-center gap-xs rounded-lg border

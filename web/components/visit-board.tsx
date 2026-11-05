@@ -75,7 +75,18 @@ function timeLabel(iso: string) {
   }).format(new Date(iso));
 }
 
-export function VisitBoard({ initialVisits }: { initialVisits: BoardVisit[] }) {
+export function VisitBoard({
+  initialVisits,
+  accessToken,
+}: {
+  initialVisits: BoardVisit[];
+  /**
+   * Token sesi petugas dari server. Cookie sesi bersifat httpOnly, jadi
+   * peramban tidak bisa membacanya sendiri — tanpa token ini socket Realtime
+   * tersambung sebagai anon dan RLS membuang setiap event `visits`.
+   */
+  accessToken?: string;
+}) {
   const t = useT();
   const [visits, setVisits] = useState<BoardVisit[]>(initialVisits);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +114,10 @@ export function VisitBoard({ initialVisits }: { initialVisits: BoardVisit[] }) {
 
   useEffect(() => {
     const supabase = supabaseBrowser();
+    // Token harus terpasang sebelum channel bergabung; kalau tidak, join
+    // dikirim tanpa access_token dan server Realtime memperlakukannya sebagai
+    // anon (RLS tidak meloloskan satu event pun).
+    if (accessToken) supabase.realtime.setAuth(accessToken);
     const channel = supabase
       .channel("visits-today")
       .on(
@@ -140,7 +155,7 @@ export function VisitBoard({ initialVisits }: { initialVisits: BoardVisit[] }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [accessToken]);
 
   useEffect(() => {
     if (!newId) return;
