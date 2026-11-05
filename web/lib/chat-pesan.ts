@@ -1,19 +1,16 @@
-import { test } from "node:test";
-import assert from "node:assert/strict";
-import { PESAN_MAKS, periksaPesan } from "./chat-pesan";
+/**
+ * Aturan isi pesan, tanpa database dan tanpa "server-only" — dipakai server
+ * action, komponen klien (batas `maxLength`), dan unit test.
+ */
 
-test("pesan: spasi saja dianggap kosong", () => {
-  assert.equal(periksaPesan("   \n\t "), "empty");
-});
+export const PESAN_MAKS = 1000;
 
-test("pesan: teks biasa diterima", () => {
-  assert.equal(periksaPesan("Jam berapa layanan loket?"), null);
-});
+export type PesanSalah = "empty" | "long";
 
-test("pesan: tepat 1000 karakter masih boleh", () => {
-  assert.equal(periksaPesan("a".repeat(PESAN_MAKS)), null);
-});
-
-test("pesan: 1001 karakter ditolak", () => {
-  assert.equal(periksaPesan("a".repeat(PESAN_MAKS + 1)), "long");
-});
+/** Alasan penolakan isi pesan, atau null kalau sah. */
+export function periksaPesan(body: string): PesanSalah | null {
+  const isi = body.trim();
+  if (!isi) return "empty";
+  if (isi.length > PESAN_MAKS) return "long";
+  return null;
+}
